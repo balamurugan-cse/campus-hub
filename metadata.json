@@ -1,0 +1,7 @@
+{
+  "name": "Campus Event Hub",
+  "description": "Full-stack campus event hub with authentication, role-based access control, dynamic seat capacity, interactive calendar, and digital pass generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
