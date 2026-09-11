@@ -6,8 +6,9 @@ interface AuthContextType {
   user: User | null;
   role: UserRole;
   isLoggedIn: boolean;
-  login: (email: string, password?: string) => Promise<void>;
-  signup: (userData: Partial<User>) => Promise<void>;
+  login: (email: string, password?: string, role?: UserRole) => Promise<User>;
+  signup: (userData: Partial<User>) => Promise<User>;
+  resetPassword: (email: string, newPassword: string) => Promise<User>;
   switchRole: (newRole: UserRole) => void;
   logout: () => void;
   isAuthModalOpen: boolean;
@@ -40,16 +41,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
-  const login = async (email: string, password?: string) => {
-    const res = await api.login(email, password);
+  const login = async (email: string, password?: string, role?: UserRole): Promise<User> => {
+    const res = await api.login(email, password, role);
     setUser(res.user);
     setIsAuthModalOpen(false);
+    return res.user;
   };
 
-  const signup = async (userData: Partial<User>) => {
+  const signup = async (userData: Partial<User>): Promise<User> => {
     const res = await api.signup(userData);
     setUser(res.user);
     setIsAuthModalOpen(false);
+    return res.user;
+  };
+
+  const resetPassword = async (email: string, newPassword: string): Promise<User> => {
+    const res = await api.resetPassword(email, newPassword);
+    setUser(res.user);
+    setIsAuthModalOpen(false);
+    return res.user;
   };
 
   const switchRole = (newRole: UserRole) => {
@@ -87,6 +97,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isLoggedIn: !!user,
         login,
         signup,
+        resetPassword,
         switchRole,
         logout,
         isAuthModalOpen,

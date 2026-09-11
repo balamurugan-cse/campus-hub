@@ -1,14 +1,14 @@
-import { EventItem, Registration, AnalyticsSummary, User, EventFilterState } from '../types';
+import { EventItem, Registration, AnalyticsSummary, User, EventFilterState, UserRole } from '../types';
 
 const API_BASE = '/api';
 
 export const api = {
   // Auth
-  async login(email: string, password?: string): Promise<{ user: User }> {
+  async login(email: string, password?: string, role?: UserRole): Promise<{ user: User; autoCreated?: boolean }> {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, role })
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Login failed' }));
@@ -26,6 +26,19 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Sign up failed' }));
       throw new Error(err.error || 'Sign up failed');
+    }
+    return res.json();
+  },
+
+  async resetPassword(email: string, newPassword: string): Promise<{ success: boolean; user: User; message: string }> {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, newPassword })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Password reset failed' }));
+      throw new Error(err.error || 'Password reset failed');
     }
     return res.json();
   },

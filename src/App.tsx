@@ -518,7 +518,7 @@ function CampusEventHubApp() {
               <div className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-1.5 justify-center sm:justify-start">
                 Campus<span className="text-purple-600">Hub</span>
                 <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 uppercase">
-                  DMI CE
+                  DMICE
                 </span>
               </div>
               <p className="text-slate-500 text-xs">

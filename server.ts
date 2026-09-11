@@ -49,52 +49,140 @@ function saveData() {
 
 loadData();
 
+// Helper to format clean human names from email strings if name not provided
+function formatNameFromEmail(email: string): string {
+  const localPart = email.split('@')[0] || 'Member';
+  // Remove numbers and special characters
+  const cleaned = localPart.replace(/[0-9_.-]/g, ' ').trim();
+  if (!cleaned) return 'Campus Member';
+  return cleaned
+    .split(/\s+/)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+}
+
 // --- Auth Endpoints ---
 app.post('/api/auth/login', (req, res) => {
-  const { email, password } = req.body;
-  if (!email) {
-    return res.status(400).json({ error: 'Email is required' });
+  const { email, password, role } = req.body;
+  if (!email || typeof email !== 'string' || !email.trim()) {
+    return res.status(400).json({ error: 'Please enter a valid email address.' });
   }
 
-  const existingUser = db.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-  if (!existingUser) {
-    return res.status(401).json({ error: 'No account found with this email. Please click "Create New Account" to register.' });
+  const cleanEmail = email.trim().toLowerCase();
+  let existingUser = db.users.find(u => u.email.toLowerCase() === cleanEmail);
+
+  if (existingUser) {
+    // If an existing user has a password set and a password was supplied, verify it
+    if (existingUser.password && password && existingUser.password !== password) {
+      return res.status(401).json({ 
+        error: 'Incorrect password for this account. If you forgot your password, please use the Reset Password option.' 
+      });
+    }
+
+    // If existing user had no password yet, save the new password
+    if (!existingUser.password && password) {
+      existingUser.password = password;
+    }
+
+    // If role preference is explicitly provided and valid, update it
+    if (role === 'organizer' || role === 'student') {
+      existingUser.role = role;
+    }
+
+    saveData();
+    return res.json({ user: existingUser, autoCreated: false });
   }
 
-  if (existingUser.password && password && existingUser.password !== password) {
-    return res.status(401).json({ error: 'Incorrect password. Please try again.' });
-  }
+  // Account does not exist yet: Seamlessly create the account so the user is never blocked by an error
+  const desiredRole = role === 'organizer' || role === 'admin' ? 'organizer' : 'student';
+  const derivedName = formatNameFromEmail(cleanEmail);
+  const fullName = desiredRole === 'organizer' ? `Dr. ${derivedName} (Faculty)` : derivedName;
 
-  return res.json({ user: existingUser });
-});
-
-app.post('/api/auth/signup', (req, res) => {
-  const { name, email, role, college, department, phone, password } = req.body;
-  if (!name || !email || !role) {
-    return res.status(400).json({ error: 'Name, email, and role are required' });
-  }
-
-  const existingUserIndex = db.users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
   const newUser = {
     id: 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-    name,
-    email,
-    role: role || 'student',
-    college: college || 'DMI College of Engineering',
-    department: department || 'Computer Science & Engineering',
-    phone: phone || '',
+    name: fullName,
+    email: cleanEmail,
+    role: desiredRole,
+    college: 'DMI College of Engineering',
+    department: 'Computer Science & Engineering',
+    phone: '',
     password: password || '',
     registeredDate: new Date().toISOString()
   };
 
+  db.users.push(newUser);
+  saveData();
+
+  return res.json({ user: newUser, autoCreated: true });
+});
+
+app.post('/api/auth/signup', (req, res) => {
+  const { name, email, role, college, department, phone, password } = req.body;
+  if (!email || typeof email !== 'string' || !email.trim()) {
+    return res.status(400).json({ error: 'Email address is required.' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const userName = name && typeof name === 'string' && name.trim() ? name.trim() : formatNameFromEmail(cleanEmail);
+  const userRole = role === 'organizer' || role === 'admin' ? 'organizer' : 'student';
+
+  const existingUserIndex = db.users.findIndex(u => u.email.toLowerCase() === cleanEmail);
+  const userObj = {
+    id: existingUserIndex >= 0 ? db.users[existingUserIndex].id : ('user_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
+    name: userName,
+    email: cleanEmail,
+    role: userRole,
+    college: college || 'DMI College of Engineering',
+    department: department || 'Computer Science & Engineering',
+    phone: phone || '',
+    password: password || (existingUserIndex >= 0 ? db.users[existingUserIndex].password : ''),
+    registeredDate: existingUserIndex >= 0 ? db.users[existingUserIndex].registeredDate : new Date().toISOString()
+  };
+
   if (existingUserIndex >= 0) {
-    db.users[existingUserIndex] = { ...db.users[existingUserIndex], ...newUser };
+    db.users[existingUserIndex] = userObj;
   } else {
-    db.users.push(newUser);
+    db.users.push(userObj);
   }
   saveData();
 
-  return res.status(201).json({ user: newUser });
+  return res.status(201).json({ user: userObj });
+});
+
+// Password reset endpoint
+app.post('/api/auth/reset-password', (req, res) => {
+  const { email, newPassword } = req.body;
+  if (!email || typeof email !== 'string' || !email.trim()) {
+    return res.status(400).json({ error: 'Email is required.' });
+  }
+  if (!newPassword || typeof newPassword !== 'string' || !newPassword.trim()) {
+    return res.status(400).json({ error: 'New password is required.' });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const user = db.users.find(u => u.email.toLowerCase() === cleanEmail);
+
+  if (!user) {
+    // If account doesn't exist, create it with the new password
+    const newUser = {
+      id: 'user_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+      name: formatNameFromEmail(cleanEmail),
+      email: cleanEmail,
+      role: 'student',
+      college: 'DMI College of Engineering',
+      department: 'Computer Science & Engineering',
+      phone: '',
+      password: newPassword.trim(),
+      registeredDate: new Date().toISOString()
+    };
+    db.users.push(newUser);
+    saveData();
+    return res.json({ success: true, user: newUser, message: 'Account created with your new password! You are now signed in.' });
+  }
+
+  user.password = newPassword.trim();
+  saveData();
+  return res.json({ success: true, user, message: 'Password updated successfully! You are now signed in.' });
 });
 
 // --- Events Endpoints ---

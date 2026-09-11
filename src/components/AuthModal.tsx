@@ -32,16 +32,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, defaultRo
     setLoading(true);
 
     try {
+      const cleanEmail = email.trim().toLowerCase();
       if (tab === 'login') {
-        await login(email, password);
+        await login(cleanEmail, password, role);
       } else {
         await signup({
-          name,
-          email,
+          name: name.trim() || cleanEmail.split('@')[0],
+          email: cleanEmail,
           role,
           college,
           department,
-          phone,
+          phone: phone.trim(),
           password
         } as any);
       }

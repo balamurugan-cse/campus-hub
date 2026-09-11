@@ -102,7 +102,7 @@ export const EventDetailModal: React.FC<EventDetailModalProps> = ({
           <div className="absolute top-4 left-4 flex items-center gap-2">
             <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-white/95 text-slate-900 shadow-sm backdrop-blur-xs">
               <img src="/dmi-logo.png" alt="DMI Logo" className="w-4 h-4 object-contain" />
-              <span>DMI CE</span>
+              <span>DMICE</span>
             </div>
             <span className="px-3 py-1 rounded-xl text-xs font-bold uppercase bg-purple-600 text-white shadow-sm">
               {event.category}

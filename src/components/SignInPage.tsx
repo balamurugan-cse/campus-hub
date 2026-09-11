@@ -12,7 +12,9 @@ import {
   EyeOff, 
   ArrowRight, 
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  KeyRound,
+  LogOut
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { UserRole } from '../types';
@@ -28,9 +30,9 @@ export const SignInPage: React.FC<SignInPageProps> = ({
   onBackToEvents,
   initialMode = 'signin'
 }) => {
-  const { login, signup, user } = useAuth();
+  const { login, signup, resetPassword, logout, user } = useAuth();
   
-  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
+  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>(initialMode);
   const [role, setRole] = useState<UserRole>('student');
   
   // Credentials
@@ -67,42 +69,57 @@ export const SignInPage: React.FC<SignInPageProps> = ({
     setLoading(true);
 
     try {
+      const cleanEmail = email.trim().toLowerCase();
+      
+      if (!cleanEmail) {
+        throw new Error('Please enter your email address.');
+      }
+      if (!cleanEmail.includes('@') || !cleanEmail.includes('.')) {
+        throw new Error('Please enter a valid email address (e.g. student@dmice.ac.in).');
+      }
+
       if (mode === 'signin') {
-        if (!email.trim()) {
-          throw new Error('Please enter your email address');
-        }
         if (!password.trim()) {
-          throw new Error('Please enter your password');
+          throw new Error('Please enter your password.');
         }
-        await login(email.trim(), password);
-        setSuccessMessage('Successfully signed in! Redirecting...');
+
+        const authUser = await login(cleanEmail, password.trim(), role);
+        setSuccessMessage(`Welcome to DMICE CampusHub, ${authUser.name}!`);
         setTimeout(() => {
-          onLoginSuccess(role);
-        }, 600);
-      } else {
-        // Sign up
-        if (!name.trim()) {
-          throw new Error('Please enter your full name');
+          onLoginSuccess(authUser.role);
+        }, 500);
+
+      } else if (mode === 'signup') {
+        if (!password || password.length < 4) {
+          throw new Error('Password must be at least 4 characters long.');
         }
-        if (!email.trim()) {
-          throw new Error('Please enter your email address');
-        }
-        if (!password || password.length < 6) {
-          throw new Error('Password must be at least 6 characters long');
-        }
-        await signup({
-          name: name.trim(),
-          email: email.trim().toLowerCase(),
+
+        const cleanName = name.trim() || cleanEmail.split('@')[0];
+        const authUser = await signup({
+          name: cleanName,
+          email: cleanEmail,
           role,
           college,
           department,
           phone: phone.trim(),
-          password
+          password: password.trim()
         } as any);
-        setSuccessMessage('Account created successfully! Redirecting...');
+
+        setSuccessMessage(`Account created successfully! Welcome, ${authUser.name}!`);
         setTimeout(() => {
-          onLoginSuccess(role);
-        }, 600);
+          onLoginSuccess(authUser.role);
+        }, 500);
+
+      } else if (mode === 'reset') {
+        if (!password || password.length < 4) {
+          throw new Error('Please enter a new password (at least 4 characters).');
+        }
+
+        const authUser = await resetPassword(cleanEmail, password.trim());
+        setSuccessMessage(`Password updated successfully! Welcome back, ${authUser.name}!`);
+        setTimeout(() => {
+          onLoginSuccess(authUser.role);
+        }, 500);
       }
     } catch (err: any) {
       setError(err.message || 'Authentication error. Please check your credentials.');
@@ -129,6 +146,37 @@ export const SignInPage: React.FC<SignInPageProps> = ({
 
       <div className="max-w-md w-full mx-auto">
         
+        {/* Already Logged In Banner (if user arrives while signed in) */}
+        {user && (
+          <div className="mb-4 bg-purple-50 border border-purple-200 rounded-2xl p-4 text-xs flex items-center justify-between shadow-xs">
+            <div>
+              <p className="font-bold text-slate-800">
+                Currently signed in as: <span className="text-purple-700">{user.name}</span>
+              </p>
+              <p className="text-slate-500 text-[11px] mt-0.5">
+                Role: <span className="font-semibold uppercase text-purple-700">{user.role}</span> • {user.email}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onLoginSuccess(user.role)}
+                className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold rounded-xl shadow-xs transition-colors"
+              >
+                Go to Hub
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="p-1.5 text-slate-500 hover:text-red-600 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Main Card */}
         <div className="bg-white rounded-3xl shadow-xl border border-slate-200/90 overflow-hidden">
           
@@ -149,8 +197,11 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                 />
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
+              <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center gap-1.5 justify-center">
                 DMI College of Engineering
+                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/20 text-purple-100 uppercase tracking-wider">
+                  DMICE
+                </span>
               </h1>
               <p className="text-xs font-medium text-purple-200 mt-1">
                 Campus Event Hub • Official Sign In Portal
@@ -159,41 +210,71 @@ export const SignInPage: React.FC<SignInPageProps> = ({
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50/70 p-1.5 gap-1.5">
-            <button
-              id="tab-btn-signin"
-              type="button"
-              onClick={() => { setMode('signin'); setError(null); }}
-              className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
-                mode === 'signin'
-                  ? 'bg-white text-purple-700 shadow-xs border border-slate-200/80'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Sign In to Account
-            </button>
-            <button
-              id="tab-btn-signup"
-              type="button"
-              onClick={() => { setMode('signup'); setError(null); }}
-              className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
-                mode === 'signup'
-                  ? 'bg-white text-purple-700 shadow-xs border border-slate-200/80'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Create New Account
-            </button>
-          </div>
+          {mode !== 'reset' ? (
+            <div className="grid grid-cols-2 border-b border-slate-200 bg-slate-50/70 p-1.5 gap-1.5">
+              <button
+                id="tab-btn-signin"
+                type="button"
+                onClick={() => { setMode('signin'); setError(null); setSuccessMessage(null); }}
+                className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
+                  mode === 'signin'
+                    ? 'bg-white text-purple-700 shadow-xs border border-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Sign In to Account
+              </button>
+              <button
+                id="tab-btn-signup"
+                type="button"
+                onClick={() => { setMode('signup'); setError(null); setSuccessMessage(null); }}
+                className={`py-2.5 text-xs font-bold rounded-xl transition-all ${
+                  mode === 'signup'
+                    ? 'bg-white text-purple-700 shadow-xs border border-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Create New Account
+              </button>
+            </div>
+          ) : (
+            <div className="border-b border-slate-200 bg-purple-50/60 p-3 flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 font-bold text-purple-900">
+                <KeyRound className="w-4 h-4 text-purple-600" />
+                <span>Reset Password & Sign In</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setMode('signin'); setError(null); }}
+                className="text-purple-700 font-bold hover:underline"
+              >
+                Back to Sign In
+              </button>
+            </div>
+          )}
 
           {/* Form Body */}
           <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-5">
             
             {/* Error or Success notification */}
             {error && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2 animate-in fade-in">
-                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
-                <span>{error}</span>
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex flex-col gap-2 animate-in fade-in">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <span className="leading-relaxed">{error}</span>
+                </div>
+                {error.toLowerCase().includes('password') && mode === 'signin' && (
+                  <div className="pl-6 pt-0.5">
+                    <button
+                      id="btn-inline-reset-password"
+                      type="button"
+                      onClick={() => { setMode('reset'); setError(null); }}
+                      className="px-2.5 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800 font-bold rounded-lg text-[11px] transition-colors"
+                    >
+                      Reset Password for this email
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
@@ -268,7 +349,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                       type="text"
                       required
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => { setName(e.target.value); setError(null); }}
                       placeholder={role === 'student' ? 'e.g. Bala Murugan' : 'e.g. Dr. Bala Murugan'}
                       className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600/30 focus:border-purple-600"
                     />
@@ -325,7 +406,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   type="email"
                   required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => { setEmail(e.target.value); setError(null); }}
                   placeholder={role === 'student' ? 'student@dmice.ac.in or personal email' : 'faculty@dmice.ac.in'}
                   className="w-full pl-10 pr-3.5 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600/30 focus:border-purple-600"
                 />
@@ -336,12 +417,16 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="block text-xs font-semibold text-slate-700">
-                  Password *
+                  {mode === 'reset' ? 'New Password *' : 'Password *'}
                 </label>
                 {mode === 'signin' && (
-                  <span className="text-[11px] text-purple-600 font-medium cursor-pointer hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => { setMode('reset'); setError(null); setSuccessMessage(null); }}
+                    className="text-[11px] text-purple-600 font-semibold hover:underline"
+                  >
                     Forgot password?
-                  </span>
+                  </button>
                 )}
               </div>
               <div className="relative">
@@ -351,7 +436,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   type={showPassword ? 'text' : 'password'}
                   required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => { setPassword(e.target.value); setError(null); }}
                   placeholder="••••••••••••"
                   className="w-full pl-10 pr-10 py-2.5 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600/30 focus:border-purple-600"
                 />
@@ -363,38 +448,46 @@ export const SignInPage: React.FC<SignInPageProps> = ({
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {mode === 'signup' && (
+              {mode !== 'signin' && (
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Password must be at least 6 characters.
+                  Password must be at least 4 characters.
                 </p>
               )}
             </div>
 
             {/* Remember Me Checkbox */}
-            <div className="flex items-center justify-between text-xs pt-1">
-              <label className="flex items-center gap-2 cursor-pointer text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
-                />
-                <span>Remember me on this device</span>
-              </label>
-            </div>
+            {mode === 'signin' && (
+              <div className="flex items-center justify-between text-xs pt-1">
+                <label className="flex items-center gap-2 cursor-pointer text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+                  />
+                  <span>Remember me on this device</span>
+                </label>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button
               id="btn-submit-auth"
               type="submit"
               disabled={loading}
-              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 active:scale-98 text-white font-bold text-sm rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3 px-4 bg-purple-600 hover:bg-purple-700 active:scale-98 text-white font-bold text-sm rounded-2xl transition-all shadow-md flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span>{mode === 'signin' ? 'Sign In to Campus Hub' : 'Create Account & Sign In'}</span>
+                  <span>
+                    {mode === 'signin' 
+                      ? 'Sign In to Campus Hub' 
+                      : mode === 'signup' 
+                      ? 'Create Account & Sign In' 
+                      : 'Update Password & Sign In'}
+                  </span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -404,7 +497,7 @@ export const SignInPage: React.FC<SignInPageProps> = ({
             <div className="text-center pt-2 border-t border-slate-100">
               {mode === 'signin' ? (
                 <p className="text-xs text-slate-500">
-                  Don't have an account yet?{' '}
+                  New to CampusHub?{' '}
                   <button
                     id="btn-switch-to-signup"
                     type="button"

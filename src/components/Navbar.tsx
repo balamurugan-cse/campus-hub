@@ -67,7 +67,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentTab, onSelectTab, registe
                     Campus<span className="text-purple-600">Hub</span>
                   </span>
                   <span className="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-purple-100 text-purple-800 uppercase tracking-wider hidden sm:inline-block">
-                    DMI CE
+                    DMICE
                   </span>
                 </div>
                 <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block -mt-0.5 truncate max-w-[160px] sm:max-w-none">

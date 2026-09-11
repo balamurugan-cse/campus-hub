@@ -1,0 +1,39 @@
+{
+  "events": [],
+  "registrations": [],
+  "users": [
+    {
+      "id": "user_1789129208065_548",
+      "name": "Bala Murugan",
+      "email": "palanibalamurugan818@gmail.com",
+      "role": "student",
+      "college": "DMI College of Engineering",
+      "department": "Computer Science & Engineering",
+      "phone": "",
+      "password": "Bala@1202",
+      "registeredDate": "2026-09-11T12:20:08.065Z"
+    },
+    {
+      "id": "user_1789129441895_431",
+      "name": "Dr. Faculty Cse (Faculty)",
+      "email": "faculty.cse@dmice.ac.in",
+      "role": "organizer",
+      "college": "DMI College of Engineering",
+      "department": "Computer Science & Engineering",
+      "phone": "",
+      "password": "faculty123",
+      "registeredDate": "2026-09-11T12:24:01.895Z"
+    },
+    {
+      "id": "user_1789129445452_169",
+      "name": "Bala Murugan",
+      "email": "bala.murugan@dmice.ac.in",
+      "role": "student",
+      "college": "DMI College of Engineering",
+      "department": "Computer Science & Engineering",
+      "phone": "9876543210",
+      "password": "pass123",
+      "registeredDate": "2026-09-11T12:24:05.452Z"
+    }
+  ]
+}
