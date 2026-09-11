@@ -34,6 +34,17 @@
       "phone": "9876543210",
       "password": "pass123",
       "registeredDate": "2026-09-11T12:24:05.452Z"
+    },
+    {
+      "id": "user_1789130525525_426",
+      "name": "Campus Member",
+      "email": "310621104001@dmice.ac.in",
+      "role": "student",
+      "college": "DMI College of Engineering",
+      "department": "Computer Science & Engineering",
+      "phone": "",
+      "password": "Student@123",
+      "registeredDate": "2026-09-11T12:42:05.525Z"
     }
   ]
 }

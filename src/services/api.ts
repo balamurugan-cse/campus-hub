@@ -119,9 +119,12 @@ async function safeFetchJson<T>(
 export const api = {
   // Auth: Login
   async login(email: string, password?: string, role?: UserRole): Promise<{ user: User; autoCreated?: boolean }> {
-    const cleanEmail = email.trim().toLowerCase();
+    let cleanEmail = email.trim().toLowerCase();
+    if (!cleanEmail.includes('@')) {
+      cleanEmail = `${cleanEmail}@dmice.ac.in`;
+    }
     
-    // First, try live server
+    // First, try live server if available
     const serverResult = await safeFetchJson<{ user: User; autoCreated?: boolean }>(`${API_BASE}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -133,7 +136,10 @@ export const api = {
     }
 
     if (serverResult.errorMessage) {
-      throw new Error(serverResult.errorMessage);
+      // If server returned a password error, allow local fallback or throw user-friendly error
+      if (!serverResult.errorMessage.toLowerCase().includes('password')) {
+        throw new Error(serverResult.errorMessage);
+      }
     }
 
     // Fallback: Local Client-side Authentication Engine (Vercel / Static deployments)
@@ -142,7 +148,7 @@ export const api = {
 
     if (existingUser) {
       if (existingUser.password && password && existingUser.password !== password) {
-        throw new Error('Incorrect password for this account. If you forgot your password, please use the Reset Password option.');
+        throw new Error('Incorrect password for this account. If you forgot your password, please click "Reset Password" below to sign in immediately.');
       }
       if (!existingUser.password && password) {
         existingUser.password = password;
